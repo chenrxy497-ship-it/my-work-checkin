@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打卡系統</title>
+    <style>
+        /* 簡單好看的介面設定 */
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            padding: 20px; 
+            background-color: #f0f2f5; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 350px; 
+            text-align: center; 
+        }
+        h1 { margin-bottom: 10px; color: #333; }
+        .time-display { font-size: 2.5em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        .status-text { margin-bottom: 20px; font-weight: bold; color: #666; }
+        
+        /* 按鈕樣式 */
+        button { 
+            width: 100%; 
+            padding: 15px; 
+            margin: 8px 0; 
+            border: none; 
+            border-radius: 10px; 
+            font-size: 18px; 
+            font-weight: bold;
+            cursor: pointer; 
+            transition: transform 0.1s, opacity 0.2s; 
+        }
+        button:active { transform: scale(0.98); }
+        
+        .btn-start { background-color: #34C759; color: white; } /* 綠色 */
+        .btn-counsel { background-color: #FF9500; color: white; } /* 橘色 */
+        .btn-end { background-color: #FF3B30; color: white; }    /* 紅色 */
+        
+        /* 按鈕失效時的樣子 */
+        .btn-disabled { 
+            background-color: #E5E5EA; 
+            color: #C7C7CC; 
+            cursor: not-allowed; 
+            pointer-events: none;
+        }
+
+        #loading { display: none; margin-top: 10px; color: #007AFF; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>💼 工作打卡</h1>
+        <div id="current-time" class="time-display">00:00:00</div>
+        <div id="status" class="status-text">狀態：尚未上班</div>
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+        <button id="btn-start" class="btn-start" onclick="sendData('start_work')">上班 (行政開始)</button>
+        <button id="btn-counsel" class="btn-counsel btn-disabled" onclick="sendData('start_counseling')" disabled>開始輔導</button>
+        <button id="btn-end" class="btn-end btn-disabled" onclick="sendData('end_work')" disabled>下班 / 結束</button>
+
+        <p id="loading">⏳ 資料傳送中...</p>
+    </div>
+
+    <script>
+        // ★★★ 請在這裡填入你的 Google Apps Script 網址 ★★★
+        const SCRIPT_URL = https://script.google.com/macros/s/AKfycbyMbm6_OfACNUuupyse6E60BV4rny8TzuIv3TROSmsBC8zWaq5Bem8ixv-0zQHfcdkduw/exec;
+
+        // 顯示目前時間
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('current-time').innerText = now.toLocaleTimeString('en-GB', {hour12: false});
+        }, 1000);
+
+        // 讀取上次的狀態 (避免重新整理後狀態不見)
+        let currentState = localStorage.getItem('workState') || 'idle'; 
+        updateUI(currentState);
+
+        function updateUI(state) {
+            const btnStart = document.getElementById('btn-start');
+            const btnCounsel = document.getElementById('btn-counsel');
+            const btnEnd = document.getElementById('btn-end');
+            const statusText = document.getElementById('status');
+
+            // 重置按鈕樣式
+            btnStart.className = 'btn-start';
+            btnCounsel.className = 'btn-counsel';
+            btnEnd.className = 'btn-end';
+            
+            btnStart.disabled = false;
+            btnCounsel.disabled = false;
+            btnEnd.disabled = false;
+
+            if (state === 'idle') {
+                // 閒置狀態：只能按「上班」
+                btnCounsel.classList.add('btn-disabled'); btnCounsel.disabled = true;
+                btnEnd.classList.add('btn-disabled'); btnEnd.disabled = true;
+                statusText.innerText = "狀態：尚未上班";
+                statusText.style.color = "#666";
+            } else if (state === 'working_admin') {
+                // 行政工作中：不能再按「上班」，可以按「輔導」或「下班」
+                btnStart.classList.add('btn-disabled'); btnStart.disabled = true;
+                statusText.innerText = "🟢 狀態：行政工作中";
+                statusText.style.color = "#34C759";
+            } else if (state === 'working_counsel') {
+                // 輔導中：不能按「上班」和「輔導」，只能按「下班」
+                btnStart.classList.add('btn-disabled'); btnStart.disabled = true;
+                btnCounsel.classList.add('btn-disabled'); btnCounsel.disabled = true;
+                statusText.innerText = "🟠 狀態：輔導進行中";
+                statusText.style.color = "#FF9500";
+            }
+        }
+
+        function sendData(action) {
+            // 簡單防呆確認
+            let msg = "";
+            if(action === 'start_work') msg = "確定要打卡上班嗎？";
+            if(action === 'start_counseling') msg = "確定要開始記錄輔導時間嗎？";
+            if(action === 'end_work') msg = "確定要下班了嗎？";
+            
+            if(!confirm(msg)) return;
+
+            // 顯示載入中
+            document.getElementById('loading').style.display = 'block';
+            
+            // 傳送資料到 Google Sheet
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: new URLSearchParams({ 'action': action })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if(data.result === 'success') {
+                    alert(data.msg);
+                    // 更新狀態
+                    if(action === 'start_work') currentState = 'working_admin';
+                    else if (action === 'start_counseling') currentState = 'working_counsel';
+                    else if (action === 'end_work') currentState = 'idle';
+                    
+                    localStorage.setItem('workState', currentState);
+                    updateUI(currentState);
+                } else {
+                    alert(data.msg); // 顯示後端回傳的錯誤訊息
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                alert("連線失敗，請檢查網路");
+                console.error(error);
+            });
+        }
+    </script>
+</body>
+</html>
