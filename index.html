@@ -3,181 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>打卡系統</title>
+    <title>智慧打卡 v4</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
-        h1 { margin-bottom: 10px; color: #333; }
-        .time-display { font-size: 2.5em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
-        .status-text { margin-bottom: 20px; font-weight: bold; color: #666; }
+        .container { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 360px; text-align: center; }
         
-        button { width: 100%; padding: 15px; margin: 8px 0; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
-        button:active { transform: scale(0.98); }
+        h1 { margin: 10px 0; color: #333; font-size: 1.6em; }
+        .time-display { font-size: 2.8em; font-weight: 800; color: #2c3e50; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .status-text { margin-bottom: 20px; font-weight: bold; color: #666; background: #eee; padding: 5px 15px; border-radius: 20px; display: inline-block; }
         
-        .btn-start { background-color: #34C759; color: white; }
-        .btn-counsel { background-color: #FF9500; color: white; }
-        .btn-end { background-color: #FF3B30; color: white; }
-        .btn-view { background-color: #007AFF; color: white; margin-top: 20px; } /* 新按鈕：藍色 */
-        .btn-disabled { background-color: #E5E5EA; color: #C7C7CC; cursor: not-allowed; pointer-events: none; }
+        /* 4 顆按鈕樣式 */
+        button { width: 100%; padding: 15px; margin: 6px 0; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; transition: transform 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button:active { transform: scale(0.97); }
+        
+        .btn-start { background: linear-gradient(135deg, #34C759, #30B753); color: white; }
+        .btn-counsel-start { background: linear-gradient(135deg, #FF9500, #F58F00); color: white; }
+        .btn-counsel-end { background: linear-gradient(135deg, #007AFF, #006EE6); color: white; } /* 藍色按鈕 */
+        .btn-end { background: linear-gradient(135deg, #FF3B30, #E6352B); color: white; }
+        
+        /* 停用狀態 */
+        .btn-disabled { background: #E5E5EA; color: #C7C7CC; box-shadow: none; cursor: not-allowed; pointer-events: none; }
 
-        /* 顯示紀錄的區域 */
-        #log-area { 
-            display: none; /* 預設隱藏 */
-            margin-top: 20px; 
-            padding: 15px; 
-            background: #f8f9fa; 
-            border-radius: 10px; 
-            text-align: left; 
-            font-size: 0.95em;
-            border: 1px solid #eee;
-        }
-        .log-item { margin: 5px 0; display: flex; justify-content: space-between; }
-        .log-label { color: #666; }
-        .log-time { font-weight: bold; color: #333; }
+        /* 工作日誌區 (Memo + 語音) */
+        .memo-area { margin-top: 15px; display: flex; gap: 8px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; outline: none; transition: 0.3s; }
+        input[type="text"]:focus { border-color: #007AFF; }
+        
+        .btn-mic { width: 50px; background: #eee; color: #333; font-size: 20px; display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: none; }
+        .btn-mic.listening { background: #FF3B30; color: white; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
         #loading { display: none; margin-top: 10px; color: #007AFF; font-size: 0.9em; }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h1>💼 工作打卡</h1>
+        <h1>💼 補習班打卡</h1>
         <div id="current-time" class="time-display">00:00:00</div>
         <div id="status" class="status-text">狀態：尚未上班</div>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
         
-        <button id="btn-start" class="btn-start" onclick="sendData('start_work')">上班 (行政開始)</button>
-        <button id="btn-counsel" class="btn-counsel btn-disabled" onclick="sendData('start_counseling')" disabled>開始輔導</button>
-        <button id="btn-end" class="btn-end btn-disabled" onclick="sendData('end_work')" disabled>下班 / 結束</button>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
 
-        <button id="btn-view" class="btn-view" onclick="viewLog()">🔍 查詢今日紀錄</button>
+        <button id="btn-start" class="btn-start" onclick="sendData('start_work')">🟢 上班 (行政開始)</button>
+        <button id="btn-c-start" class="btn-counsel-start btn-disabled" onclick="sendData('start_counseling')">🟠 開始輔導</button>
+        <button id="btn-c-end" class="btn-counsel-end btn-disabled" onclick="sendData('end_counseling')">🔵 輔導結束 (轉行政)</button>
+        <button id="btn-end" class="btn-end btn-disabled" onclick="sendData('end_work')">🏁 下班 / 結束</button>
 
-        <div id="log-area">
-            <div class="log-item"><span class="log-label">上班時間：</span><span id="log-start" class="log-time">--:--:--</span></div>
-            <div class="log-item"><span class="log-label">輔導開始：</span><span id="log-counsel" class="log-time">--:--:--</span></div>
-            <div class="log-item"><span class="log-label">下班時間：</span><span id="log-end" class="log-time">--:--:--</span></div>
+        <div class="memo-area">
+            <input type="text" id="memo-input" placeholder="工作日誌 (選填)...">
+            <button class="btn-mic" onclick="startDictation()">🎙️</button>
         </div>
 
-        <p id="loading">⏳ 資料傳送中...</p>
+        <p id="loading">⏳ 資料處理中...</p>
     </div>
 
     <script>
-        // ★★★ 記得換成你的新網址！記得要有雙引號！ ★★★
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxrp8g7PSfvSrzV38_SiiQJu-XEActfgQBg5ClgpChIA730hosVt-7Ne2Rr3QtWyY4Rg/exec";
+        // ★★★ 請填入新的 Apps Script 網址 ★★★
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIMXeCyjB9vFQdT162g-o2blrf3T9fciXM_qcEABzw-oeb5o8wY0CekTpMh8Zm33sOKQ/exec";
 
         setInterval(() => {
-            const now = new Date();
-            document.getElementById('current-time').innerText = now.toLocaleTimeString('en-GB', {hour12: false});
+            document.getElementById('current-time').innerText = new Date().toLocaleTimeString('en-GB', {hour12: false});
         }, 1000);
 
-        let currentState = localStorage.getItem('workState') || 'idle'; 
+        // 狀態管理
+        let currentState = localStorage.getItem('workState_v4') || 'idle'; 
         updateUI(currentState);
 
         function updateUI(state) {
-            const btnStart = document.getElementById('btn-start');
-            const btnCounsel = document.getElementById('btn-counsel');
-            const btnEnd = document.getElementById('btn-end');
-            const statusText = document.getElementById('status');
+            const bStart = document.getElementById('btn-start');
+            const bCStart = document.getElementById('btn-c-start');
+            const bCEnd = document.getElementById('btn-c-end');
+            const bEnd = document.getElementById('btn-end');
+            const sText = document.getElementById('status');
 
-            btnStart.className = 'btn-start'; btnCounsel.className = 'btn-counsel'; btnEnd.className = 'btn-end';
-            btnStart.disabled = false; btnCounsel.disabled = false; btnEnd.disabled = false;
+            // 先全部啟用，下面再根據邏輯鎖住
+            bStart.className = 'btn-start'; bCStart.className = 'btn-counsel-start'; 
+            bCEnd.className = 'btn-counsel-end'; bEnd.className = 'btn-end';
+            bStart.disabled = false; bCStart.disabled = false; bCEnd.disabled = false; bEnd.disabled = false;
+            
+            // 重置鎖定
+            bStart.classList.remove('btn-disabled'); bCStart.classList.remove('btn-disabled');
+            bCEnd.classList.remove('btn-disabled'); bEnd.classList.remove('btn-disabled');
 
             if (state === 'idle') {
-                btnCounsel.classList.add('btn-disabled'); btnCounsel.disabled = true;
-                btnEnd.classList.add('btn-disabled'); btnEnd.disabled = true;
-                statusText.innerText = "狀態：尚未上班"; statusText.style.color = "#666";
-            } else if (state === 'working_admin') {
-                btnStart.classList.add('btn-disabled'); btnStart.disabled = true;
-                statusText.innerText = "🟢 狀態：行政工作中"; statusText.style.color = "#34C759";
-            } else if (state === 'working_counsel') {
-                btnStart.classList.add('btn-disabled'); btnStart.disabled = true;
-                btnCounsel.classList.add('btn-disabled'); btnCounsel.disabled = true;
-                statusText.innerText = "🟠 狀態：輔導進行中"; statusText.style.color = "#FF9500";
+                // 沒上班：只能按上班
+                disable(bCStart, bCEnd, bEnd);
+                sText.innerText = "狀態：尚未上班"; sText.style.color = "#666";
+            } 
+            else if (state === 'working_admin') {
+                // 行政中：可以按「輔導開始」或「下班」，不能按「上班」或「輔導結束」
+                disable(bStart, bCEnd);
+                sText.innerText = "🟢 行政工作中..."; sText.style.color = "#34C759";
+            } 
+            else if (state === 'working_counsel') {
+                // 輔導中：只能按「輔導結束」，其他都不行 (強迫先結束輔導才能下班)
+                disable(bStart, bCStart, bEnd);
+                sText.innerText = "🟠 輔導進行中..."; sText.style.color = "#FF9500";
             }
         }
 
-        // --- 新增：查詢功能 ---
-        function viewLog() {
-            // 1. 計算今天的動態密碼 (MMdd)
-            const now = new Date();
-            // padStart(2, '0') 意思是如果數字只有一位，前面補 0 (例如 1月 變成 01)
-            const month = (now.getMonth() + 1).toString().padStart(2, '0'); 
-            const date = now.getDate().toString().padStart(2, '0');
-            const correctPassword = month + date; // 組合密碼，例如 1119
-
-            // 2. 跳出輸入框
-            const userPassword = prompt("🔒 安全驗證\n請輸入今日密碼：");
-
-            // 3. 驗證密碼
-            if (userPassword === correctPassword) {
-                // 密碼對了，去後端抓資料
-                fetchData();
-            } else {
-                if(userPassword !== null) alert("❌ 密碼錯誤！"); // 如果按取消就不跳錯誤
-            }
+        function disable(...btns) {
+            btns.forEach(b => { b.classList.add('btn-disabled'); b.disabled = true; });
         }
 
-        function fetchData() {
-            document.getElementById('loading').innerText = "🔍 查詢資料中...";
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('log-area').style.display = 'none'; // 先藏起來
-
-            fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: new URLSearchParams({ 'action': 'get_today_log' })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('loading').style.display = 'none';
-                if(data.result === 'success') {
-                    // 把抓到的時間填入格子
-                    document.getElementById('log-start').innerText = data.data.start;
-                    document.getElementById('log-counsel').innerText = data.data.counsel;
-                    document.getElementById('log-end').innerText = data.data.end;
-                    // 顯示區域
-                    document.getElementById('log-area').style.display = 'block';
-                } else {
-                    alert(data.msg);
-                }
-            })
-            .catch(error => {
-                document.getElementById('loading').style.display = 'none';
-                alert("無法連線到資料庫");
-            });
-        }
-
-        // --- 原本的打卡功能 ---
         function sendData(action) {
-            let msg = "";
-            if(action === 'start_work') msg = "確定要打卡上班嗎？";
-            if(action === 'start_counseling') msg = "確定要開始記錄輔導時間嗎？";
-            if(action === 'end_work') msg = "確定要下班了嗎？";
+            let msg = "確定執行？";
+            if(action === 'end_work') msg = "確定要下班了嗎？記得寫 Memo 喔！";
             if(!confirm(msg)) return;
 
-            document.getElementById('loading').innerText = "⏳ 資料傳送中...";
+            const memo = document.getElementById('memo-input').value; // 抓取文字
+
             document.getElementById('loading').style.display = 'block';
             
             fetch(SCRIPT_URL, {
                 method: 'POST',
-                body: new URLSearchParams({ 'action': action })
+                body: new URLSearchParams({ 'action': action, 'memo': memo })
             })
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 document.getElementById('loading').style.display = 'none';
                 if(data.result === 'success') {
                     alert(data.msg);
+                    document.getElementById('memo-input').value = ""; // 清空輸入框
+                    
+                    // 狀態切換邏輯
                     if(action === 'start_work') currentState = 'working_admin';
-                    else if (action === 'start_counseling') currentState = 'working_counsel';
-                    else if (action === 'end_work') currentState = 'idle';
-                    localStorage.setItem('workState', currentState);
+                    else if(action === 'start_counseling') currentState = 'working_counsel';
+                    else if(action === 'end_counseling') currentState = 'working_admin'; // 轉回行政
+                    else if(action === 'end_work') currentState = 'idle';
+                    
+                    localStorage.setItem('workState_v4', currentState);
                     updateUI(currentState);
                 } else {
                     alert(data.msg);
                 }
             })
-            .catch(error => {
+            .catch(err => {
                 document.getElementById('loading').style.display = 'none';
-                alert("連線失敗，請檢查網路");
+                alert("連線失敗");
             });
+        }
+
+        // --- 語音輸入功能 (Web Speech API) ---
+        function startDictation() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert("你的瀏覽器不支援語音輸入，請使用 Chrome 或 Safari");
+                return;
+            }
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'zh-TW'; // 設定中文
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            const micBtn = document.querySelector('.btn-mic');
+            micBtn.classList.add('listening');
+
+            recognition.onstart = () => { console.log("開始聽寫..."); };
+            recognition.onend = () => { micBtn.classList.remove('listening'); };
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                const input = document.getElementById('memo-input');
+                // 把聽到的字接在原本的字後面
+                input.value += (input.value ? " " : "") + text;
+            };
+
+            recognition.onerror = (e) => {
+                micBtn.classList.remove('listening');
+                alert("語音辨識錯誤，請重試");
+            };
+
+            recognition.start();
         }
     </script>
 </body>
